@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fire alarm</title>
+
+    <script src="https://cdn.socket.io/socket.io-3.0.1.min.js"></script>
+    <style>
+      .container {
+        margin: 0 auto;
+        width: 25vw;
+      }
+      h1 {
+        display: none;
+        background-color: rgb(32, 74, 151);
+        color: white;
+        margin: 0;
+        border-radius: 5px;
+      }
+
+      label {
+        display: none;
+        color: black;
+      }
+
+      button {
+        display: none;
+        margin: 1em 0;
+        font-size: 2em;
+        background-color: rgb(46, 111, 185);
+        color: white;
+        border: none;
+        padding: 0.5em;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body id="body">
+    <div class="container">
+      <h2 id="title">welcome <%= name %></h2>
+
+      <!-- <button onclick="sendMessage()">send message</button> -->
+      <h1>Fire alarm has detected smoke or fire</h1>
+      <label class="label" for="falseButton"
+        >If there is NO fire or smoke occurence press the button below</label
+      >
+      <button class="button" id="falseButton">False alarm</button>
+      <label class="label" for="warnButton"
+        >If fire or smoke HAS occured then press the button below</label
+      >
+      <button class="button" id="warnButton">Inform firestation</button>
+    </div>
+    <script>
+      const socket = io("http://localhost:3002");
+
+      // Hold button for certain time class
+      // https://www.youtube.com/watch?v=A95mIE2HdcY&ab_channel=dcode
+      class ClickHoldButton {
+        constructor(target, callback, timer) {
+          this.target = target;
+          this.callback = callback;
+          this.isHeld = false;
+          this.activeHoldTimeOutId = null;
+          this.timer = timer;
+
+          // Events that trigger the methods (desktop only)
+          ["mousedown", "touchstart"].forEach((type) => {
+            this.target.addEventListener(type, this.onHoldStart.bind(this));
+          });
+
+          this.target.addEventListener("mouseup", this.onHoldEnd.bind(this));
+          this.target.addEventListener("mouseleave", this.onHoldEnd.bind(this));
+          this.target.addEventListener("mouseout", this.onHoldEnd.bind(this));
+        }
+
+        onHoldStart() {
+          this.isHeld = true;
+
+          this.activeHoldTimeOutId = setTimeout(() => {
+            if (this.isHeld) {
+              this.callback();
+            }
+          }, this.timer);
+        }
+
+        onHoldEnd() {
+          this.isHeld = false;
+          clearTimeout(this.activeHoldTimeOutId);
+        }
+      }
+
+      // dom elements
+      let falseButton = document.getElementById("falseButton");
+      let warnButton = document.getElementById("warnButton");
+      let falseButtonLabels = document.querySelectorAll(".label");
+
+      // applying hold to click on false button
+      new ClickHoldButton(
+        falseButton,
+        () => {
+          alert(
+            "the firedepartment were NOT warned, do not hesitate to contact us for any questions."
+          );
+        },
+        2000
+      );
+
+      // Main listener
+      socket.on("dataBaseChange", (data) => {
+        // display labels
+        falseButtonLabel = [...falseButtonLabels];
+        falseButtonLabels.forEach((label) => {
+          label.style.display = "block";
+        });
+
+        // displaying buttons
+        warnButton.style.display = "inline-block";
+        falseButton.style.display = "inline-block";
+        // socket.disconnect();
+
+        // applying hold to click on warn button
+        new ClickHoldButton(
+          warnButton,
+          (e) => {
+            let formattedData = turnDataToHumanReadable(data);
+            sendMessageToPhone(formattedData);
+            alert(
+              "the firedepartment are now warned, if extinguishing the fire is not possible, then evacuate people in near vicinty and limit oxygen coming in"
+            );
+          },
+          2000
+        );
+      });
+
+      // format mongodb data
+      function turnDataToHumanReadable(data) {
+        let dataPayloadParsed = JSON.parse(data.payload);
+        dataPayloadParsed.date = new Date(dataPayloadParsed.date).toUTCString();
+        return dataPayloadParsed;
+      }
+
+      function sendMessageToPhone(dataFormatted) {
+        let messageToSend = `Emergency! Fire occurance at ${dataFormatted.date}, with a temperature of ${dataFormatted.temp}`;
+        console.log(messageToSend);
+        returnResponseToBackend(messageToSend);
+        socket.disconnect();
+      }
+
+      // sending back to backend
+      function returnResponseToBackend(messageToSend) {
+        console.log("inside last frontend function");
+        socket.emit("userResponse", messageToSend);
+      }
+
+      socket.connect();
+    </script>
+  </body>
+</html>
