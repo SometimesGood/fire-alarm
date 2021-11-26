@@ -6,6 +6,7 @@ require("dotenv").config();
 app.set("view engine", "ejs");
 
 // twilio credentials for messaging phone
+//CHANGE THESE TWO TO INFOMATION SENT
 const accountSid = process.env.ACCOUNTSID;
 const authToken = process.env.AUTHTOKEN;
 const twilioClient = require("twilio")(accountSid, authToken);
