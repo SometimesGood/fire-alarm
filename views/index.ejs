@@ -103,6 +103,12 @@
           alert(
             "the firedepartment were NOT warned, do not hesitate to contact us for any questions."
           );
+          warnButton.style.display = "none";
+          falseButton.style.display = "none";
+          falseButtonLabel = [...falseButtonLabels];
+          falseButtonLabels.forEach((label) => {
+            label.style.display = "none";
+          });
         },
         2000
       );

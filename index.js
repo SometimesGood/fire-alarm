@@ -2,12 +2,12 @@ const express = require("express");
 const app = express();
 const server = require("http").createServer(app);
 const io = require("socket.io")(server, { cors: { origin: "*" } });
-
+require("dotenv").config();
 app.set("view engine", "ejs");
 
 // twilio credentials for messaging phone
-const accountSid = "ACf6e58da422f2c7739f19fa7a84d3723e";
-const authToken = "539b78d7e81d31078c4d4012ac11da7d";
+const accountSid = process.env.ACCOUNTSID;
+const authToken = process.env.AUTHTOKEN;
 const twilioClient = require("twilio")(accountSid, authToken);
 
 app.use("/assets", express.static("assets"));
@@ -40,18 +40,16 @@ mongoose
 //stackoverflow.com/questions/67827256/while-using-change-stream-in-mongodb-with-socket-io-the-on-change-is-getting
 
 io.on("connection", (socket) => {
-  console.log(socket.id);
-
   const insert_pipeline = [{ $match: { operationType: "insert" } }];
 
   fireWarningModel.watch(insert_pipeline).on("change", (mongoDBdata) => {
-    console.log("endret");
     io.emit("dataBaseChange", mongoDBdata.fullDocument);
   });
 
   socket.on("userResponse", (messageToSend) => {
     console.log("inside final backend");
     console.log(messageToSend);
+
     twilioClient.messages
       .create({
         body: messageToSend,
@@ -60,6 +58,7 @@ io.on("connection", (socket) => {
       })
       .then((message) => console.log(message.sid));
   });
+
   io.emit("end");
 });
 
